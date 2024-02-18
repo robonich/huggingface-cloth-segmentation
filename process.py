@@ -99,7 +99,7 @@ def apply_transform(img):
 
 
 
-def generate_mask(input_image_path, net, palette, device = 'cpu'):
+def generate_mask(input_image_path, output_dir, net, palette, device = 'cpu'):
     
     img = Image.open(input_image_path).convert('RGB')
     img_size = img.size
@@ -107,9 +107,8 @@ def generate_mask(input_image_path, net, palette, device = 'cpu'):
     image_tensor = apply_transform(img)
     image_tensor = torch.unsqueeze(image_tensor, 0)
 
-    parent_dir = input_image_path.split("/")[-2]
     file_base = input_image_path.split("/")[-1].split(".")[0]
-    out_dir = os.path.join(opt.output, parent_dir)
+    out_dir = output_dir
     
     os.makedirs(out_dir, exist_ok=True)
 
@@ -187,12 +186,13 @@ def main(args):
 
     # img = Image.open(args.image).convert('RGB')
 
-    cloth_seg = generate_mask(args.image, net=model, palette=palette, device=device)
+    cloth_seg = generate_mask(args.image, args.output_dir, net=model, palette=palette, device=device)
 
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Help to set arguments for Cloth Segmentation.')
+    parser.add_argument("--output_dir", type=str)
     parser.add_argument('--image', type=str, help='Path to the input image')
     parser.add_argument('--cuda', action='store_true', help='Enable CUDA (default: False)')
     parser.add_argument('--checkpoint_path', type=str, default='model/cloth_segm.pth', help='Path to the checkpoint file')
