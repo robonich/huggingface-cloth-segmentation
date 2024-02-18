@@ -99,20 +99,19 @@ def apply_transform(img):
 
 
 
-def generate_mask(input_image, net, palette, device = 'cpu'):
-
-    #img = Image.open(input_image).convert('RGB')
-    img = input_image
+def generate_mask(input_image_path, net, palette, device = 'cpu'):
+    
+    img = Image.open(input_image_path).convert('RGB')
     img_size = img.size
     img = img.resize((768, 768), Image.BICUBIC)
     image_tensor = apply_transform(img)
     image_tensor = torch.unsqueeze(image_tensor, 0)
 
-    alpha_out_dir = os.path.join(opt.output,'alpha')
-    cloth_seg_out_dir = os.path.join(opt.output,'cloth_seg')
-
-    os.makedirs(alpha_out_dir, exist_ok=True)
-    os.makedirs(cloth_seg_out_dir, exist_ok=True)
+    parent_dir = input_image_path.split("/")[-2]
+    file_base = input_image_path.split("/")[-1].split(".")[0]
+    out_dir = os.path.join(opt.output, parent_dir)
+    
+    os.makedirs(out_dir, exist_ok=True)
 
     with torch.no_grad():
         output_tensor = net(image_tensor.to(device))
@@ -129,18 +128,30 @@ def generate_mask(input_image, net, palette, device = 'cpu'):
             classes_to_save.append(cls)
 
     # Save alpha masks
+    mask = np.zeros(output_arr[0].shape, dtype=np.uint8)
     for cls in classes_to_save:
         alpha_mask = (output_arr == cls).astype(np.uint8) * 255
         alpha_mask = alpha_mask[0]  # Selecting the first channel to make it 2D
+        mask += alpha_mask
         alpha_mask_img = Image.fromarray(alpha_mask, mode='L')
         alpha_mask_img = alpha_mask_img.resize(img_size, Image.BICUBIC)
-        alpha_mask_img.save(os.path.join(alpha_out_dir, f'{cls}.png'))
+        alpha_mask_img.save(os.path.join(out_dir, f'{file_base}_mask_{cls}.png'))
+        
+    mask = Image.fromarray(mask, mode='L')
+    void = Image.new("RGB", img.size, 0)
+    clopped = img.copy()
+    clopped = Image.composite(clopped, void, mask)
+    clopped.putalpha(mask)
+    clopped = clopped.resize(img_size, Image.BICUBIC)
+    clopped.save(os.path.join(out_dir, f'{file_base}_clopped.png'))
+    mask = mask.resize(img_size, Image.BICUBIC)
+    mask.save(os.path.join(out_dir, f'{file_base}_all_mask.png'))
 
     # Save final cloth segmentations
     cloth_seg = Image.fromarray(output_arr[0].astype(np.uint8), mode='P')
     cloth_seg.putpalette(palette)
     cloth_seg = cloth_seg.resize(img_size, Image.BICUBIC)
-    cloth_seg.save(os.path.join(cloth_seg_out_dir, 'final_seg.png'))
+    cloth_seg.save(os.path.join(out_dir, f'{file_base}_mask.png'))
     return cloth_seg
 
 
@@ -174,9 +185,9 @@ def main(args):
 
     palette = get_palette(4)
 
-    img = Image.open(args.image).convert('RGB')
+    # img = Image.open(args.image).convert('RGB')
 
-    cloth_seg = generate_mask(img, net=model, palette=palette, device=device)
+    cloth_seg = generate_mask(args.image, net=model, palette=palette, device=device)
 
 
 
