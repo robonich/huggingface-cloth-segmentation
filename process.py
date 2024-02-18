@@ -139,11 +139,11 @@ def generate_mask(input_image_path, net, palette, device = 'cpu'):
         
     mask = Image.fromarray(mask, mode='L')
     void = Image.new("RGB", img.size, 0)
-    clopped = img.copy()
-    clopped = Image.composite(clopped, void, mask)
-    clopped.putalpha(mask)
-    clopped = clopped.resize(img_size, Image.BICUBIC)
-    clopped.save(os.path.join(out_dir, f'{file_base}_clopped.png'))
+    cropped = img.copy()
+    cropped = Image.composite(cropped, void, mask)
+    cropped.putalpha(mask)
+    cropped = cropped.resize(img_size, Image.BICUBIC)
+    cropped.save(os.path.join(out_dir, f'{file_base}_cropped.png'))
     mask = mask.resize(img_size, Image.BICUBIC)
     mask.save(os.path.join(out_dir, f'{file_base}_all_mask.png'))
 
